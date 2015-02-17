@@ -12,30 +12,34 @@
  */
 
 typedef struct {
-  int_8 brightness;
-  int_8 b;
-  int_8 g;
-  int_8 r;
+  uint8_t brightness;
+  uint8_t b;
+  uint8_t g;
+  uint8_t r;
 } apa102_pixel;
 
 typedef struct {
+  uint16_t size;
   apa102_pixel pixel_data[];
 } apa102 ;
 
-apa102 get_apa102_buffer(int size) {
+apa102 * get_apa102_buffer(int size) {
   int i;
-  apa102 buffer = os_malloc(sizeof(apa102) + sizeof(apa102_pixel) * size);
+  apa102 *buffer;
+  buffer  = (apa102 *) os_malloc(sizeof(apa102) + sizeof(apa102_pixel) * size);
+  buffer->size = size;
 
   for(i = 0; i < size; i++) {
-    buffer.pixel_data[i].brightness = 0xff;
-    buffer.pixel_data[i].b = 0x00;
-    buffer.pixel_data[i].r = 0x00;
-    buffer.pixel_data[i].g = 0x00;
+    buffer->pixel_data[i].brightness = 0xff;
+    buffer->pixel_data[i].b = 0x00;
+    buffer->pixel_data[i].r = 0x00;
+    buffer->pixel_data[i].g = 0x00;
   }
 
   return buffer;
 }
 
+/*
 #define MIN_OPT_LEVEL 2
 #include "lrodefs.h"
 const LUA_REG_TYPE ws2812_map[] =
@@ -49,6 +53,7 @@ LUALIB_API int luaopen_ws2812(lua_State *L) {
   LREGISTER(L, "ws2812", ws2812_map);
   return 1;
 }
+*/
 
 // ----------------------------------------------------------------------------
 
