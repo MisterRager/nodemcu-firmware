@@ -125,12 +125,20 @@
 #define ROM_MODULES_WS2812
 #endif
 
+#if defined(LUA_USE_MODULES_APA102)
+#define MODULES_APA102 "apa102"
+#define ROM_MODULES_APA102 \
+		_ROM(MODULES_APA102, luaopen_apa102, apa102_map)
+#else
+#define ROM_MODULES_APA102
+#endif
+
 
 #define LUA_MODULES_ROM      \
         ROM_MODULES_GPIO    \
         ROM_MODULES_PWM		\
         ROM_MODULES_WIFI	\
-		ROM_MODULES_MQTT    \
+	ROM_MODULES_MQTT    \
         ROM_MODULES_I2C     \
         ROM_MODULES_SPI     \
         ROM_MODULES_TMR     \
@@ -141,7 +149,8 @@
         ROM_MODULES_UART    \
         ROM_MODULES_OW      \
         ROM_MODULES_BIT		\
-		ROM_MODULES_WS2812
+	ROM_MODULES_WS2812	\
+	ROM_MODULES_APA102
 
 #endif
 
