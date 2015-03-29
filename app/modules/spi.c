@@ -98,96 +98,59 @@ static int spi_send( lua_State *L )
   return 1;
 }
 
+static int brightness = 225;
+
 // Lua: wrote = spi.apa102_send( id, data1, [data2], ..., [datan] )
 // data can be either a string, a table or an 8-bit number
-static int spi_apa102_send( lua_State *L )
-{
-  unsigned id = luaL_checkinteger( L, 1 );
+static int spi_apa102_send( lua_State *L ) {
+  //SPI 1 is the accessory SPI, just hardcoding this
+  unsigned id = 1; 
+
   int padding = 4;
   const char *pdata;
   size_t datalen, i, j;
   int numdata;
   u32 wrote = 0;
   unsigned argn;
-  unsigned brightness = 255 - 25;
 
-  MOD_CHECK_ID( spi, id );
-  if( lua_gettop( L ) < 2 )
+  if( lua_gettop( L ) < 1 )
     return luaL_error( L, "wrong arg type" );
 
-  for( argn = 2; argn <= lua_gettop( L ); argn ++ )
+  for( argn = 1; argn <= lua_gettop( L ); argn ++ )
   {
-    // lua_isnumber() would silently convert a string of digits to an integer
-    // whereas here strings are handled separately.
-    if( lua_type( L, argn ) == LUA_TNUMBER )
-    {
-      numdata = ( int )luaL_checkinteger( L, argn );
+    pdata = luaL_checklstring( L, argn, &datalen );
 
-      //preamble
-      for( i = 0; i < 4; i ++ ) platform_spi_send_recv( id, 0x00 );
+    for( i = 0; i < 4; i ++ ) platform_spi_send_recv( id, 0x00 );
 
-      if( numdata < 0 || numdata > 255 )
-        return luaL_error( L, "wrong arg range" );
+    for( i = 0; i < datalen; i += 3) {
       platform_spi_send_recv( id, brightness );
-      platform_spi_send_recv( id, numdata );
-      wrote ++;
-
-      //caboose
-      padding = (datalen / 16) > 4 ? (datalen / 16) : 4;
-      platform_spi_send_recv( id, 0xFF );
+      platform_spi_send_recv( id, pdata[ i ] );
+      platform_spi_send_recv( id, pdata[ i + 1 ] );
+      platform_spi_send_recv( id, pdata[ i + 2 ] );
     }
-    else if( lua_istable( L, argn ) )
-    {
-      datalen = lua_objlen( L, argn );
 
-      for( i = 0; i < 4; i ++ ) platform_spi_send_recv( id, 0x00 );
-      
-      for( i = 0; i < datalen; i += 3 )
-      {
-        platform_spi_send_recv( id, brightness );
+    padding = (datalen / 16) > 4 ? (datalen / 16) : 4;
+    for( i = 0; i < padding; i ++ ) platform_spi_send_recv( id, 0xFF );
 
-        for ( j = 0; j < 3; j++ ) {
-          lua_rawgeti( L, argn, i + j + 1 );
-          numdata = ( int )luaL_checkinteger( L, -1 );
-          lua_pop( L, 1 );
-          if( numdata < 0 || numdata > 255 )
-            return luaL_error( L, "wrong arg range" );
-          platform_spi_send_recv( id, numdata );
-        }
-      }
-
-      padding = (datalen / 16) > 4 ? (datalen / 16) : 4;
-      for( i = 0; i < padding; i ++ ) platform_spi_send_recv( id, 0xFF );
-
-      wrote += i;
-      if( i < datalen )
-        break;
-    }
-    else
-    {
-      for( i = 0; i < 4; i ++ ) platform_spi_send_recv( id, 0x00 );
-
-      pdata = luaL_checklstring( L, argn, &datalen );
-      for( i = 0; i < datalen; i += 3) {
-        platform_spi_send_recv( id, brightness );
-        platform_spi_send_recv( id, pdata[ i ] );
-        platform_spi_send_recv( id, pdata[ i + 1 ] );
-        platform_spi_send_recv( id, pdata[ i + 2 ] );
-      }
-
-      padding = (datalen / 16) > 4 ? (datalen / 16) : 4;
-      for( i = 0; i < padding; i ++ ) platform_spi_send_recv( id, 0xFF );
-
-      wrote += i;
-      if( i < datalen )
-        break;
-    }
+    wrote += i;
+    if( i < datalen )
+      break;
   }
 
   lua_pushinteger( L, wrote );
   return 1;
 }
 
+#define MATH_MAX( a , b ) ( (a) > (b) ? (a) : (b) )
+#define MATH_MIN( a , b ) ( (a) < (b) ? (a) : (b) )
+
+static int spi_apa102_brightness( lua_State *L ) {
+  int brt = luaL_checkinteger( L, 1 );
+  brightness = MATH_MAX( MATH_MIN( 31 , brt ), 0 ) + 224;
+
+  lua_pushinteger( L, brightness );
+  return 1;
+}
 
 // Lua: read = spi.recv( id, size )
 static int spi_recv( lua_State *L )
@@ -221,6 +184,7 @@ const LUA_REG_TYPE spi_map[] =
   { LSTRKEY( "setup" ),  LFUNCVAL( spi_setup ) },
   { LSTRKEY( "send" ),   LFUNCVAL( spi_send ) },
   { LSTRKEY( "apa102_send" ),   LFUNCVAL( spi_apa102_send ) },
+  { LSTRKEY( "apa102_brightness" ), LFUNCVAL( spi_apa102_brightness ) },
   { LSTRKEY( "recv" ),   LFUNCVAL( spi_recv ) },
 #if LUA_OPTIMIZE_MEMORY > 0
   { LSTRKEY( "MASTER" ),    LNUMVAL( PLATFORM_SPI_MASTER ) },
